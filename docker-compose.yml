@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: educando_mongodb
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=educando_db
+
+  backend:
+    build: ./backend
+    container_name: educando_backend
+    restart: always
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=educando_db
+      - JWT_SECRET=${JWT_SECRET:-tu_clave_secreta_muy_segura_cambiar_en_produccion}
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_BACKEND_URL=${DOMAIN_URL:-http://localhost}
+    container_name: educando_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mongodb_data:
+  uploads_data:
