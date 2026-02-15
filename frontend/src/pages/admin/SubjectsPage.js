@@ -148,17 +148,15 @@ export default function SubjectsPage() {
               <Label>Nombre</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre de la materia" />
             </div>
-            {!editing && (
-              <div className="space-y-2">
-                <Label>Programa</Label>
-                <Select value={form.program_id} onValueChange={(v) => setForm({ ...form, program_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar programa" /></SelectTrigger>
-                  <SelectContent>
-                    {programs.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>Programa</Label>
+              <Select value={form.program_id} onValueChange={(v) => setForm({ ...form, program_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar programa" /></SelectTrigger>
+                <SelectContent>
+                  {programs.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Módulo</Label>
               <Select value={String(form.module_number)} onValueChange={(v) => setForm({ ...form, module_number: parseInt(v) })}>
