@@ -55,7 +55,7 @@ export default function SubjectsPage() {
     setSaving(true);
     try {
       if (editing) {
-        await api.put(`/subjects/${editing.id}`, { name: form.name, description: form.description, module_number: form.module_number });
+        await api.put(`/subjects/${editing.id}`, { name: form.name, description: form.description, module_number: form.module_number, program_id: form.program_id });
         toast.success('Materia actualizada');
       } else {
         await api.post('/subjects', form);
