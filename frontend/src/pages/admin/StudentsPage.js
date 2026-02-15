@@ -11,23 +11,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, GraduationCap, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import api from '@/lib/api';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState([]);
   const [programs, setPrograms] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', cedula: '', password: '', phone: '', program_id: '' });
+  const [form, setForm] = useState({ name: '', cedula: '', password: '', phone: '', program_id: '', course_ids: [] });
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [studRes, progRes] = await Promise.all([api.get('/users?role=estudiante'), api.get('/programs')]);
+      const [studRes, progRes, courseRes] = await Promise.all([
+        api.get('/users?role=estudiante'),
+        api.get('/programs'),
+        api.get('/courses')
+      ]);
       setStudents(studRes.data);
       setPrograms(progRes.data);
+      setCourses(courseRes.data);
     } catch (err) {
       toast.error('Error cargando datos');
     } finally {
@@ -41,16 +48,35 @@ export default function StudentsPage() {
   const getProgramName = (id) => programs.find(p => p.id === id)?.name || 'Sin asignar';
   const initials = (name) => name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
+  // Get which courses a student is enrolled in
+  const getStudentCourseIds = (studentId) => courses.filter(c => (c.student_ids || []).includes(studentId)).map(c => c.id);
+
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', cedula: '', password: '', phone: '', program_id: '' });
+    setForm({ name: '', cedula: '', password: '', phone: '', program_id: '', course_ids: [] });
     setDialogOpen(true);
   };
 
   const openEdit = (student) => {
     setEditing(student);
-    setForm({ name: student.name, cedula: student.cedula || '', password: '', phone: student.phone || '', program_id: student.program_id || '' });
+    setForm({
+      name: student.name,
+      cedula: student.cedula || '',
+      password: '',
+      phone: student.phone || '',
+      program_id: student.program_id || '',
+      course_ids: getStudentCourseIds(student.id)
+    });
     setDialogOpen(true);
+  };
+
+  const toggleCourse = (courseId) => {
+    setForm(prev => ({
+      ...prev,
+      course_ids: prev.course_ids.includes(courseId)
+        ? prev.course_ids.filter(id => id !== courseId)
+        : [...prev.course_ids, courseId]
+    }));
   };
 
   const handleSave = async () => {
@@ -58,13 +84,33 @@ export default function StudentsPage() {
     if (!editing && !form.password) { toast.error('Contraseña requerida'); return; }
     setSaving(true);
     try {
+      let studentId;
       if (editing) {
         await api.put(`/users/${editing.id}`, { name: form.name, phone: form.phone, program_id: form.program_id || null });
+        studentId = editing.id;
         toast.success('Estudiante actualizado');
       } else {
-        await api.post('/users', { ...form, role: 'estudiante' });
+        const res = await api.post('/users', { ...form, role: 'estudiante' });
+        studentId = res.data.id;
         toast.success('Estudiante creado');
       }
+
+      // Update course enrollments
+      for (const course of courses) {
+        const isEnrolled = (course.student_ids || []).includes(studentId);
+        const shouldBeEnrolled = form.course_ids.includes(course.id);
+
+        if (isEnrolled && !shouldBeEnrolled) {
+          // Remove from course
+          const newIds = (course.student_ids || []).filter(id => id !== studentId);
+          await api.put(`/courses/${course.id}`, { student_ids: newIds });
+        } else if (!isEnrolled && shouldBeEnrolled) {
+          // Add to course
+          const newIds = [...(course.student_ids || []), studentId];
+          await api.put(`/courses/${course.id}`, { student_ids: newIds });
+        }
+      }
+
       setDialogOpen(false);
       fetchData();
     } catch (err) {
