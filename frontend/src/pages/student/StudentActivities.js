@@ -19,7 +19,9 @@ export default function StudentActivities() {
   const [loading, setLoading] = useState(true);
   const [submitDialog, setSubmitDialog] = useState(null);
   const [submitContent, setSubmitContent] = useState('');
+  const [submitFiles, setSubmitFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
