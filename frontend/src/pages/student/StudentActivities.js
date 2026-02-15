@@ -206,13 +206,46 @@ export default function StudentActivities() {
               <p className="text-sm text-muted-foreground">{submitDialog?.description}</p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Tu Respuesta</label>
+              <label className="text-sm font-medium">Tu Respuesta (opcional si adjuntas archivos)</label>
               <Textarea
                 value={submitContent}
                 onChange={(e) => setSubmitContent(e.target.value)}
                 placeholder="Escribe tu respuesta aquí..."
-                rows={6}
+                rows={4}
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Adjuntar Archivos (fotos, PDF, etc.)</label>
+              <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-input px-4 py-3 w-full hover:bg-accent transition-colors">
+                <Upload className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {uploadingFile ? 'Subiendo...' : 'Seleccionar archivos'}
+                </span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.ppt,.pptx,.txt"
+                  multiple
+                  onChange={handleFileUpload}
+                  disabled={uploadingFile}
+                />
+                {uploadingFile && <Loader2 className="h-4 w-4 animate-spin" />}
+              </label>
+              {submitFiles.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {submitFiles.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2">
+                      <span className="flex items-center gap-2 text-sm truncate">
+                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name) ? <Image className="h-4 w-4 text-primary shrink-0" /> : <File className="h-4 w-4 text-primary shrink-0" />}
+                        {f.name}
+                      </span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeSubmitFile(i)}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
