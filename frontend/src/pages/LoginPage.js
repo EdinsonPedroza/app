@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [role, setRole] = useState('estudiante');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
@@ -44,18 +43,6 @@ export default function LoginPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      const res = await api.post('/seed');
-      toast.success(res.data.message);
-    } catch (err) {
-      toast.error('Error inicializando datos');
-    } finally {
-      setSeeding(false);
     }
   };
 
