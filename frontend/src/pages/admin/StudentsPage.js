@@ -216,6 +216,19 @@ export default function StudentsPage() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Teléfono</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="300 123 4567" /></div>
+            <div className="space-y-2">
+              <Label>Cursos Inscritos</Label>
+              <div className="max-h-36 overflow-y-auto rounded-lg border p-3 space-y-2">
+                {courses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay cursos creados</p>
+                ) : courses.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <Checkbox checked={form.course_ids.includes(c.id)} onCheckedChange={() => toggleCourse(c.id)} />
+                    <span className="text-sm">{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
