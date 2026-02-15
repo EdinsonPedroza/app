@@ -27,6 +27,8 @@ export default function TeacherActivities() {
   const [submissions, setSubmissions] = useState([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [students, setStudents] = useState([]);
+  const [grades, setGrades] = useState({});
+  const [savingGrade, setSavingGrade] = useState(null);
 
   const fetchActivities = useCallback(async () => {
     try {
