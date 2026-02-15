@@ -378,6 +378,7 @@ export default function TeacherActivities() {
                 <p className="text-center text-muted-foreground py-6">No hay estudiantes inscritos en este curso</p>
               ) : students.map((student) => {
                 const sub = submissions.find(s => s.student_id === student.id);
+                const currentGrade = grades[student.id] !== undefined ? grades[student.id] : '';
                 return (
                   <Card key={student.id} className={`${sub ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
                     <CardContent className="p-4">
@@ -419,6 +420,30 @@ export default function TeacherActivities() {
                               )}
                             </>
                           )}
+                        </div>
+                        {/* Campo de calificación */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min="0"
+                              max="5"
+                              step="0.1"
+                              placeholder="Nota"
+                              className="w-20 h-8 text-center text-sm"
+                              value={currentGrade}
+                              onChange={(e) => handleGradeChange(student.id, e.target.value)}
+                            />
+                            <span className="text-xs text-muted-foreground">/5</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="h-8"
+                            onClick={() => saveGrade(student.id)}
+                            disabled={savingGrade === student.id || currentGrade === ''}
+                          >
+                            {savingGrade === student.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
