@@ -874,8 +874,10 @@ async def seed_data():
         {
             "id": "act-1",
             "course_id": course1_id,
+            "activity_number": 1,
             "title": "Ensayo sobre principios administrativos",
             "description": "Elaborar un ensayo de 2 páginas sobre los principios fundamentales de la administración según Henri Fayol.",
+            "start_date": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
             "due_date": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
             "files": [],
             "active": True,
@@ -885,8 +887,10 @@ async def seed_data():
         {
             "id": "act-2",
             "course_id": course1_id,
+            "activity_number": 2,
             "title": "Taller de organización empresarial",
             "description": "Realizar el taller práctico sobre estructura organizacional. Descargar el archivo adjunto.",
+            "start_date": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
             "due_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
             "files": [{"name": "taller_organizacion.pdf", "url": "#"}],
             "active": True,
@@ -896,8 +900,10 @@ async def seed_data():
         {
             "id": "act-3",
             "course_id": course2_id,
+            "activity_number": 1,
             "title": "Observación pedagógica",
             "description": "Realizar una observación de clase virtual y presentar un informe de 3 páginas.",
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat(),
             "due_date": (datetime.now(timezone.utc) + timedelta(days=21)).isoformat(),
             "files": [],
             "active": True,
