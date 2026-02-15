@@ -328,6 +328,76 @@ export default function TeacherActivities() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Ver Entregas */}
+      <Dialog open={!!submissionsDialog} onOpenChange={() => setSubmissionsDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Entregas - {submissionsDialog?.title}</DialogTitle>
+            <DialogDescription>Revisa las entregas de los estudiantes</DialogDescription>
+          </DialogHeader>
+          {loadingSubmissions ? (
+            <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          ) : (
+            <div className="space-y-3">
+              {students.length === 0 ? (
+                <p className="text-center text-muted-foreground py-6">No hay estudiantes inscritos en este curso</p>
+              ) : students.map((student) => {
+                const sub = submissions.find(s => s.student_id === student.id);
+                return (
+                  <Card key={student.id} className={`${sub ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">{student.name}</span>
+                            <Badge variant={sub ? 'success' : 'destructive'} className="text-xs">
+                              {sub ? 'Entregado' : 'Sin entregar'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Cédula: {student.cedula}</p>
+                          {sub && (
+                            <>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Entregado: {new Date(sub.submitted_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              {sub.content && (
+                                <div className="mt-2 p-2 bg-card rounded-md border">
+                                  <p className="text-sm">{sub.content}</p>
+                                </div>
+                              )}
+                              {sub.files && sub.files.length > 0 && (
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  {sub.files.map((f, i) => (
+                                    <a
+                                      key={i}
+                                      href={f.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-xs text-primary hover:underline bg-primary/10 rounded-md px-2 py-1"
+                                    >
+                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name) ? <Image className="h-3 w-3" /> : <File className="h-3 w-3" />}
+                                      {f.name}
+                                      <Download className="h-3 w-3" />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubmissionsDialog(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
