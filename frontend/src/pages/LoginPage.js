@@ -187,27 +187,6 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-6 pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground text-center mb-3">
-                  ¿Primera vez? Inicializa los datos de prueba:
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={handleSeed}
-                  disabled={seeding}
-                >
-                  {seeding && <Loader2 className="h-3 w-3 animate-spin" />}
-                  Crear datos de prueba
-                </Button>
-                <div className="mt-3 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">Credenciales de prueba:</p>
-                  <p>Admin: admin@educando.com / admin123</p>
-                  <p>Profesor: profesor@educando.com / profesor123</p>
-                  <p>Estudiante: 1234567890 / estudiante123</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>
