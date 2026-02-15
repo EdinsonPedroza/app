@@ -611,8 +611,16 @@ async def create_submission(req: SubmissionCreate, user=Depends(get_current_user
     if not activity:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
     
+    now = datetime.now(timezone.utc)
+    
+    # Check start_date
+    if activity.get("start_date"):
+        start_date = datetime.fromisoformat(activity["start_date"].replace("Z", "+00:00"))
+        if now < start_date:
+            raise HTTPException(status_code=400, detail="La actividad aún no está disponible.")
+    
     due_date = datetime.fromisoformat(activity["due_date"].replace("Z", "+00:00"))
-    if datetime.now(timezone.utc) > due_date:
+    if now > due_date:
         raise HTTPException(status_code=400, detail="La fecha límite ha pasado. No se puede entregar.")
     
     existing = await db.submissions.find_one({
