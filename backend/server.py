@@ -418,11 +418,16 @@ async def get_activities(course_id: Optional[str] = None, user=Depends(get_curre
 async def create_activity(req: ActivityCreate, user=Depends(get_current_user)):
     if user["role"] != "profesor":
         raise HTTPException(status_code=403, detail="Solo profesores")
+    # Auto-number: count existing activities for this course
+    count = await db.activities.count_documents({"course_id": req.course_id})
+    activity_number = count + 1
     activity = {
         "id": str(uuid.uuid4()),
         "course_id": req.course_id,
+        "activity_number": activity_number,
         "title": req.title,
         "description": req.description,
+        "start_date": req.start_date,
         "due_date": req.due_date,
         "files": req.files,
         "active": True,
