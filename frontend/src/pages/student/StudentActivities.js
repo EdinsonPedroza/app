@@ -55,14 +55,41 @@ export default function StudentActivities() {
     return { key: 'active', label: 'Activa', variant: 'success', icon: Unlock };
   };
 
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setUploadingFile(true);
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        setSubmitFiles(prev => [...prev, { name: res.data.filename, url: `${BACKEND_URL}${res.data.url}` }]);
+      }
+      toast.success(`${files.length} archivo(s) subido(s)`);
+    } catch (err) {
+      toast.error('Error subiendo archivo');
+    } finally {
+      setUploadingFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeSubmitFile = (index) => {
+    setSubmitFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
-    if (!submitContent.trim()) { toast.error('Escribe tu respuesta'); return; }
+    if (!submitContent.trim() && submitFiles.length === 0) { toast.error('Escribe una respuesta o adjunta archivos'); return; }
     setSubmitting(true);
     try {
-      await api.post('/submissions', { activity_id: submitDialog.id, content: submitContent });
+      await api.post('/submissions', { activity_id: submitDialog.id, content: submitContent, files: submitFiles });
       toast.success('Actividad entregada exitosamente');
       setSubmitDialog(null);
       setSubmitContent('');
+      setSubmitFiles([]);
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Error entregando actividad');
