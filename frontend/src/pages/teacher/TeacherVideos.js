@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Trash2, Loader2, Video, ExternalLink, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Video, ExternalLink, Calendar } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function TeacherVideos() {
@@ -16,6 +16,7 @@ export default function TeacherVideos() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ title: '', url: '', description: '' });
   const [saving, setSaving] = useState(false);
 
@@ -33,7 +34,14 @@ export default function TeacherVideos() {
   useEffect(() => { fetchVideos(); }, [fetchVideos]);
 
   const openCreate = () => {
+    setEditing(null);
     setForm({ title: '', url: '', description: '' });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (vid) => {
+    setEditing(vid);
+    setForm({ title: vid.title, url: vid.url, description: vid.description || '' });
     setDialogOpen(true);
   };
 
@@ -41,12 +49,17 @@ export default function TeacherVideos() {
     if (!form.title.trim() || !form.url.trim()) { toast.error('Título y URL requeridos'); return; }
     setSaving(true);
     try {
-      await api.post('/class-videos', { course_id: courseId, ...form });
-      toast.success('Video subido exitosamente');
+      if (editing) {
+        await api.put(`/class-videos/${editing.id}`, form);
+        toast.success('Video actualizado');
+      } else {
+        await api.post('/class-videos', { course_id: courseId, ...form });
+        toast.success('Video subido exitosamente');
+      }
       setDialogOpen(false);
       fetchVideos();
     } catch (err) {
-      toast.error('Error subiendo video');
+      toast.error('Error guardando video');
     } finally {
       setSaving(false);
     }
@@ -71,7 +84,7 @@ export default function TeacherVideos() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold font-heading">Videos de Clase</h1>
-            <p className="text-muted-foreground mt-1">Sube enlaces de videos para tus estudiantes</p>
+            <p className="text-muted-foreground mt-1">Sube enlaces de YouTube para tus estudiantes</p>
           </div>
           <Button onClick={openCreate}><Plus className="h-4 w-4" /> Subir Video</Button>
         </div>
@@ -109,6 +122,9 @@ export default function TeacherVideos() {
                             <ExternalLink className="h-3 w-3" /> Ver
                           </a>
                         </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(vid)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(vid.id)}>
                           <Trash2 className="h-3 w-3 text-destructive" />
                         </Button>
@@ -125,17 +141,20 @@ export default function TeacherVideos() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Subir Video de Clase</DialogTitle>
-            <DialogDescription>Pega el enlace del video (YouTube, Google Drive, etc.)</DialogDescription>
+            <DialogTitle>{editing ? 'Editar Video' : 'Subir Video de Clase'}</DialogTitle>
+            <DialogDescription>Pega el enlace de YouTube del video</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Título</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Clase 3 - Tema..." /></div>
-            <div className="space-y-2"><Label>URL del Video</Label><Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://youtube.com/watch?v=..." /></div>
+            <div className="space-y-2"><Label>URL de YouTube</Label><Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://youtube.com/watch?v=..." /></div>
             <div className="space-y-2"><Label>Descripción (opcional)</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Breve descripción del contenido..." rows={3} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}Subir Video</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editing ? 'Actualizar' : 'Subir Video'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
