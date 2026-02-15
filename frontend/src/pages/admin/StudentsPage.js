@@ -180,6 +180,7 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground font-mono">{s.cedula}</TableCell>
                       <TableCell><Badge variant="secondary" className="text-xs truncate max-w-32">{getProgramName(s.program_id)}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{getStudentCourseIds(s.id).length} cursos</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{s.phone || '-'}</TableCell>
                       <TableCell><Badge variant={s.active !== false ? 'success' : 'destructive'}>{s.active !== false ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                       <TableCell className="text-right">
