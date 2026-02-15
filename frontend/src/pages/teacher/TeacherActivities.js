@@ -23,6 +23,10 @@ export default function TeacherActivities() {
   const [form, setForm] = useState({ title: '', description: '', start_date: '', due_date: '', files: [] });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [submissionsDialog, setSubmissionsDialog] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [students, setStudents] = useState([]);
 
   const fetchActivities = useCallback(async () => {
     try {
