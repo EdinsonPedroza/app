@@ -179,7 +179,7 @@ export default function StudentActivities() {
                         {submission ? (
                           <Badge variant="success">Entregada</Badge>
                         ) : status.key === 'active' ? (
-                          <Button size="sm" onClick={() => { setSubmitDialog(act); setSubmitContent(''); }}>
+                          <Button size="sm" onClick={() => { setSubmitDialog(act); setSubmitContent(''); setSubmitFiles([]); }}>
                             <Send className="h-3 w-3" /> Entregar
                           </Button>
                         ) : (
