@@ -30,6 +30,10 @@ JWT_ALGORITHM = "HS256"
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# File upload directory
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
 # --- Utility Functions ---
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
