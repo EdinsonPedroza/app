@@ -82,7 +82,10 @@ export default function TeacherCourseDashboard() {
                 return (
                   <div key={act.id} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{act.title}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono shrink-0">Act {act.activity_number || '?'}</Badge>
+                        <p className="text-sm font-medium truncate">{act.title}</p>
+                      </div>
                       <p className="text-xs text-muted-foreground">Vence: {due.toLocaleDateString('es-CO')}</p>
                     </div>
                     <Badge variant={isOverdue ? 'destructive' : 'success'}>
