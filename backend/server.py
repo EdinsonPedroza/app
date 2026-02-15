@@ -131,12 +131,14 @@ class ActivityCreate(BaseModel):
     course_id: str
     title: str
     description: Optional[str] = ""
+    start_date: Optional[str] = None
     due_date: str
     files: Optional[list] = []
 
 class ActivityUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    start_date: Optional[str] = None
     due_date: Optional[str] = None
     files: Optional[list] = None
     active: Optional[bool] = None
