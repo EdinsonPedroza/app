@@ -244,6 +244,7 @@ export default function TeacherActivities() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge variant={status.variant}>{status.label}</Badge>
+                        <Button variant="outline" size="sm" onClick={() => openSubmissions(act)}><Eye className="h-4 w-4" /> Entregas</Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(act)}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(act.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </div>
