@@ -111,6 +111,7 @@ class SubjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     module_number: Optional[int] = None
+    program_id: Optional[str] = None
     active: Optional[bool] = None
 
 class CourseCreate(BaseModel):
