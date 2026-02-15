@@ -41,6 +41,31 @@ export default function TeacherActivities() {
 
   useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
+  const openSubmissions = async (activity) => {
+    setSubmissionsDialog(activity);
+    setLoadingSubmissions(true);
+    try {
+      const [subsRes, studentsRes] = await Promise.all([
+        api.get(`/submissions?activity_id=${activity.id}`),
+        api.get(`/courses/${courseId}`)
+      ]);
+      setSubmissions(subsRes.data);
+      // Obtener lista de estudiantes del curso
+      const courseData = studentsRes.data;
+      if (courseData.student_ids && courseData.student_ids.length > 0) {
+        const usersRes = await api.get('/users?role=estudiante');
+        const enrolled = usersRes.data.filter(u => courseData.student_ids.includes(u.id));
+        setStudents(enrolled);
+      } else {
+        setStudents([]);
+      }
+    } catch (err) {
+      toast.error('Error cargando entregas');
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
     const now = new Date();
