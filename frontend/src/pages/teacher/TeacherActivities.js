@@ -46,12 +46,18 @@ export default function TeacherActivities() {
   const openSubmissions = async (activity) => {
     setSubmissionsDialog(activity);
     setLoadingSubmissions(true);
+    setGrades({});
     try {
-      const [subsRes, studentsRes] = await Promise.all([
+      const [subsRes, studentsRes, gradesRes] = await Promise.all([
         api.get(`/submissions?activity_id=${activity.id}`),
-        api.get(`/courses/${courseId}`)
+        api.get(`/courses/${courseId}`),
+        api.get(`/grades?activity_id=${activity.id}`)
       ]);
       setSubmissions(subsRes.data);
+      // Cargar notas existentes
+      const gradesMap = {};
+      gradesRes.data.forEach(g => { gradesMap[g.student_id] = g.value; });
+      setGrades(gradesMap);
       // Obtener lista de estudiantes del curso
       const courseData = studentsRes.data;
       if (courseData.student_ids && courseData.student_ids.length > 0) {
@@ -65,6 +71,32 @@ export default function TeacherActivities() {
       toast.error('Error cargando entregas');
     } finally {
       setLoadingSubmissions(false);
+    }
+  };
+
+  const handleGradeChange = (studentId, value) => {
+    setGrades(prev => ({ ...prev, [studentId]: value }));
+  };
+
+  const saveGrade = async (studentId) => {
+    const value = parseFloat(grades[studentId]);
+    if (isNaN(value) || value < 0 || value > 5) {
+      toast.error('La nota debe ser entre 0 y 5');
+      return;
+    }
+    setSavingGrade(studentId);
+    try {
+      await api.post('/grades', {
+        student_id: studentId,
+        course_id: courseId,
+        activity_id: submissionsDialog.id,
+        value: value
+      });
+      toast.success('Nota guardada');
+    } catch (err) {
+      toast.error('Error guardando nota');
+    } finally {
+      setSavingGrade(null);
     }
   };
 
