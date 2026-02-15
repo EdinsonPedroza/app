@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, FileText, Calendar, Clock, Lock, Unlock, Send, Download, File, TimerOff } from 'lucide-react';
+import { Loader2, FileText, Calendar, Clock, Lock, Unlock, Send, Download, File, TimerOff, Upload, Trash2, Image } from 'lucide-react';
 import api from '@/lib/api';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function StudentActivities() {
   const { user } = useAuth();
