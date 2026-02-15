@@ -546,6 +546,51 @@ async def delete_class_video(video_id: str, user=Depends(get_current_user)):
     await db.class_videos.delete_one({"id": video_id})
     return {"message": "Video eliminado"}
 
+class ClassVideoUpdate(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+    description: Optional[str] = None
+
+@api_router.put("/class-videos/{video_id}")
+async def update_class_video(video_id: str, req: ClassVideoUpdate, user=Depends(get_current_user)):
+    if user["role"] != "profesor":
+        raise HTTPException(status_code=403, detail="Solo profesores")
+    update_data = {k: v for k, v in req.model_dump().items() if v is not None}
+    result = await db.class_videos.update_one({"id": video_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Video no encontrado")
+    updated = await db.class_videos.find_one({"id": video_id}, {"_id": 0})
+    return updated
+
+# --- File Upload Route ---
+@api_router.post("/upload")
+async def upload_file(file: UploadFile = File(...), user=Depends(get_current_user)):
+    if user["role"] not in ["profesor", "admin"]:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
+    file_id = str(uuid.uuid4())
+    ext = Path(file.filename).suffix
+    safe_name = f"{file_id}{ext}"
+    file_path = UPLOAD_DIR / safe_name
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    return {
+        "filename": file.filename,
+        "stored_name": safe_name,
+        "url": f"/api/files/{safe_name}",
+        "size": os.path.getsize(file_path)
+    }
+
+@api_router.get("/files/{filename}")
+async def get_file(filename: str):
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    from starlette.responses import FileResponse
+    return FileResponse(file_path)
+
 # --- Submissions Routes ---
 @api_router.get("/submissions")
 async def get_submissions(activity_id: Optional[str] = None, student_id: Optional[str] = None, user=Depends(get_current_user)):
