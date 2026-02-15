@@ -1,0 +1,153 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { Loader2, FileText, Calendar, Clock, Lock, Unlock, Send } from 'lucide-react';
+import api from '@/lib/api';
+
+export default function StudentActivities() {
+  const { user } = useAuth();
+  const [activities, setActivities] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitDialog, setSubmitDialog] = useState(null);
+  const [submitContent, setSubmitContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const cRes = await api.get(`/courses?student_id=${user.id}`);
+      const allActivities = [];
+      for (const course of cRes.data) {
+        const aRes = await api.get(`/activities?course_id=${course.id}`);
+        allActivities.push(...aRes.data.map(a => ({ ...a, courseName: course.name })));
+      }
+      setActivities(allActivities);
+      const sRes = await api.get(`/submissions?student_id=${user.id}`);
+      setSubmissions(sRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user.id]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const hasSubmission = (actId) => submissions.find(s => s.activity_id === actId);
+
+  const handleSubmit = async () => {
+    if (!submitContent.trim()) { toast.error('Escribe tu respuesta'); return; }
+    setSubmitting(true);
+    try {
+      await api.post('/submissions', { activity_id: submitDialog.id, content: submitContent });
+      toast.success('Actividad entregada exitosamente');
+      setSubmitDialog(null);
+      setSubmitContent('');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Error entregando actividad');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatDate = (d) => new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold font-heading">Actividades</h1>
+          <p className="text-muted-foreground mt-1">Tus actividades pendientes y entregadas</p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : activities.length === 0 ? (
+          <Card className="shadow-card"><CardContent className="p-10 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No hay actividades disponibles</p>
+          </CardContent></Card>
+        ) : (
+          <div className="space-y-3">
+            {activities.map((act) => {
+              const due = new Date(act.due_date);
+              const now = new Date();
+              const isOverdue = due < now;
+              const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+              const submission = hasSubmission(act.id);
+
+              return (
+                <Card key={act.id} className={`shadow-card transition-shadow ${isOverdue ? 'opacity-75' : 'hover:shadow-card-hover'}`}>
+                  <CardContent className="p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {isOverdue ? <Lock className="h-4 w-4 text-destructive shrink-0" /> : <Unlock className="h-4 w-4 text-success shrink-0" />}
+                          <h3 className="text-sm font-semibold">{act.title}</h3>
+                        </div>
+                        <p className="text-xs text-primary mb-2">{act.courseName}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{act.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(act.due_date)}</span>
+                          {!isOverdue && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {daysLeft} días</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {submission ? (
+                          <Badge variant="success">Entregada</Badge>
+                        ) : isOverdue ? (
+                          <Badge variant="destructive">Bloqueada</Badge>
+                        ) : (
+                          <Button size="sm" onClick={() => { setSubmitDialog(act); setSubmitContent(submission?.content || ''); }}>
+                            <Send className="h-3 w-3" /> Entregar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <Dialog open={!!submitDialog} onOpenChange={() => setSubmitDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Entregar Actividad</DialogTitle>
+            <DialogDescription>{submitDialog?.title}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-sm text-muted-foreground">{submitDialog?.description}</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tu Respuesta</label>
+              <Textarea
+                value={submitContent}
+                onChange={(e) => setSubmitContent(e.target.value)}
+                placeholder="Escribe tu respuesta aquí..."
+                rows={6}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubmitDialog(null)}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Send className="h-4 w-4" /> Entregar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
+  );
+}
