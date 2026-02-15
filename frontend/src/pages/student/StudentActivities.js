@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, FileText, Calendar, Clock, Lock, Unlock, Send } from 'lucide-react';
+import { Loader2, FileText, Calendar, Clock, Lock, Unlock, Send, Download, File, TimerOff } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function StudentActivities() {
@@ -40,6 +40,16 @@ export default function StudentActivities() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const hasSubmission = (actId) => submissions.find(s => s.activity_id === actId);
+
+  const getActivityStatus = (act) => {
+    const now = new Date();
+    const due = new Date(act.due_date);
+    const start = act.start_date ? new Date(act.start_date) : null;
+
+    if (now > due) return { key: 'expired', label: 'Bloqueada (Vencida)', variant: 'destructive', icon: Lock };
+    if (start && now < start) return { key: 'upcoming', label: 'No Disponible', variant: 'secondary', icon: TimerOff };
+    return { key: 'active', label: 'Activa', variant: 'success', icon: Unlock };
+  };
 
   const handleSubmit = async () => {
     if (!submitContent.trim()) { toast.error('Escribe tu respuesta'); return; }
@@ -77,37 +87,72 @@ export default function StudentActivities() {
         ) : (
           <div className="space-y-3">
             {activities.map((act) => {
+              const status = getActivityStatus(act);
               const due = new Date(act.due_date);
+              const start = act.start_date ? new Date(act.start_date) : null;
               const now = new Date();
-              const isOverdue = due < now;
               const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
               const submission = hasSubmission(act.id);
+              const StatusIcon = status.icon;
+              const actNum = act.activity_number || '?';
 
               return (
-                <Card key={act.id} className={`shadow-card transition-shadow ${isOverdue ? 'opacity-75' : 'hover:shadow-card-hover'}`}>
+                <Card key={act.id} className={`shadow-card transition-shadow ${status.key !== 'active' && !submission ? 'opacity-70' : 'hover:shadow-card-hover'}`}>
                   <CardContent className="p-5">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          {isOverdue ? <Lock className="h-4 w-4 text-destructive shrink-0" /> : <Unlock className="h-4 w-4 text-success shrink-0" />}
-                          <h3 className="text-sm font-semibold">{act.title}</h3>
+                          <Badge variant="outline" className="shrink-0 text-xs font-mono">Act {actNum}</Badge>
+                          <StatusIcon className={`h-4 w-4 shrink-0 ${status.variant === 'destructive' ? 'text-destructive' : status.variant === 'success' ? 'text-success' : 'text-muted-foreground'}`} />
+                          <h3 className="text-sm font-semibold truncate">{act.title}</h3>
                         </div>
                         <p className="text-xs text-primary mb-2">{act.courseName}</p>
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{act.description}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(act.due_date)}</span>
-                          {!isOverdue && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {daysLeft} días</span>}
+
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                          {start && (
+                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Disponible: {formatDate(act.start_date)}</span>
+                          )}
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Vence: {formatDate(act.due_date)}</span>
+                          {status.key === 'active' && daysLeft > 0 && (
+                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {daysLeft} días restantes</span>
+                          )}
+                          {status.key === 'upcoming' && start && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Disponible en {Math.ceil((start - now) / (1000 * 60 * 60 * 24))} días
+                            </span>
+                          )}
                         </div>
+
+                        {/* Attached files */}
+                        {act.files && act.files.length > 0 && (
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            {act.files.map((f, i) => (
+                              <a
+                                key={i}
+                                href={f.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 rounded-md px-2 py-1"
+                              >
+                                <File className="h-3 w-3" />
+                                {f.name}
+                                <Download className="h-3 w-3" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {submission ? (
                           <Badge variant="success">Entregada</Badge>
-                        ) : isOverdue ? (
-                          <Badge variant="destructive">Bloqueada</Badge>
-                        ) : (
-                          <Button size="sm" onClick={() => { setSubmitDialog(act); setSubmitContent(submission?.content || ''); }}>
+                        ) : status.key === 'active' ? (
+                          <Button size="sm" onClick={() => { setSubmitDialog(act); setSubmitContent(''); }}>
                             <Send className="h-3 w-3" /> Entregar
                           </Button>
+                        ) : (
+                          <Badge variant={status.variant}>{status.label}</Badge>
                         )}
                       </div>
                     </div>
