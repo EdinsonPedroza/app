@@ -163,6 +163,7 @@ export default function StudentsPage() {
                     <TableHead>Estudiante</TableHead>
                     <TableHead>Cédula</TableHead>
                     <TableHead>Programa</TableHead>
+                    <TableHead>Cursos</TableHead>
                     <TableHead>Teléfono</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
