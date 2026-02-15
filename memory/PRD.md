@@ -1,56 +1,81 @@
-# Corporación Social Educando - Plataforma Educativa Virtual
+# Escuela Técnica Virtual - PRD
 
-## Overview
-Full-stack education platform for "Corporación Social Educando", supporting 3 technical programs with role-based access for admins, teachers, and students.
+## Problema Original
+El usuario solicitó una aplicación web para una escuela técnica virtual con tres roles: Admin, Profesor y Estudiante.
 
-## Tech Stack
-- **Frontend**: React (CRA) + Tailwind CSS + shadcn/ui
-- **Backend**: FastAPI + MongoDB (Motor)
-- **Auth**: JWT tokens with SHA-256 password hashing
-
-## Programs
-1. Técnico en Asistencia Administrativa (2 modules, 10 subjects)
-2. Técnico Laboral en Atención a la Primera Infancia (2 modules, 14 subjects)
-3. Técnico en Seguridad y Salud en el Trabajo (2 modules, 12 subjects)
-
-## Roles & Features
+## Roles y Funcionalidades
 
 ### Admin
-- Dashboard with platform stats
-- CRUD Programs (técnicos)
-- CRUD Subjects (materias) per program
-- CRUD Teachers (email + password)
-- CRUD Students (cédula + password, assigned to program)
-- CRUD Courses (groups with teacher + student assignments)
+- Gestiona programas técnicos, materias, cursos, profesores y estudiantes
+- Asigna materias a programas específicos
+- Asigna estudiantes a cursos
+- Login con email y contraseña
 
-### Teacher (Profesor)
-- Course selector (first screen after login)
-- Within course: Dashboard, Activities, Grades, Videos, Students
-- Create/edit activities with deadlines (auto-lock after due date)
-- Upload class video links (YouTube, etc.)
-- Grade students per activity or general grade (0-5 scale)
-- View enrolled students
+### Profesor  
+- Selecciona curso a gestionar al iniciar sesión
+- Crea actividades con archivos adjuntos y fechas límite
+- Gestiona notas en vista tipo hoja de cálculo
+- Sube videos de clase (enlaces de YouTube)
 
-### Student (Estudiante)
-- Dashboard with academic summary
-- View enrolled courses
-- View activities with deadline status (Active/Blocked)
-- Submit activities (text-based)
-- View grades and average
-- Watch class videos
+### Estudiante
+- Login con cédula y contraseña
+- Ve actividades: Activas, No Disponibles, Bloqueadas (vencidas)
+- Entrega actividades con archivos adjuntos
+- Ve notas por materia y promedio general
 
-## Default Test Users
-- **Admin**: admin@educando.com / admin123
-- **Profesor**: profesor@educando.com / profesor123
-- **Profesor 2**: profesor2@educando.com / profesor123
-- **Estudiante 1**: 1234567890 / estudiante123
-- **Estudiante 2**: 0987654321 / estudiante123
-- **Estudiante 3**: 1122334455 / estudiante123
+## Stack Tecnológico
+- **Frontend:** React, Vite, Tailwind CSS, shadcn/ui
+- **Backend:** Python, FastAPI, Motor (MongoDB async)
+- **Base de datos:** MongoDB
+- **Autenticación:** JWT
 
-## API Endpoints
-- POST /api/seed - Initialize database with test data
-- POST /api/auth/login - Login
-- GET /api/auth/me - Get current user
-- CRUD /api/users, /api/programs, /api/subjects, /api/courses
-- CRUD /api/activities, /api/grades, /api/class-videos, /api/submissions
-- GET /api/stats - Admin stats
+## Arquitectura
+```
+/app
+├── backend/
+│   ├── server.py       # API FastAPI
+│   ├── uploads/        # Archivos subidos
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── components/ # Componentes UI
+    │   ├── pages/      # Páginas por rol
+    │   └── context/    # AuthContext
+    └── package.json
+```
+
+## Funcionalidades Implementadas
+
+### Fecha: 2026-02-15
+- [x] Sistema de autenticación JWT para 3 roles
+- [x] Dashboard de Admin con CRUD completo
+- [x] Dashboard de Profesor con gestión de cursos
+- [x] Dashboard de Estudiante con actividades y notas
+- [x] Subida de archivos para actividades (profesor)
+- [x] Subida de archivos para entregas (estudiante)
+- [x] Selector de programa al crear/editar materias
+- [x] Asignación de cursos a estudiantes
+- [x] Estados de actividad: Activa, No Disponible, Bloqueada
+- [x] Vista tipo hoja de cálculo para notas
+- [x] Videos de clase con enlaces de YouTube
+
+## Credenciales de Prueba
+- **Admin:** admin@educando.com / admin123
+- **Profesor:** profesor@educando.com / profesor123
+- **Estudiante:** Cédula 1234567890 / estudiante123
+
+## Backlog
+
+### P1 - Alta Prioridad
+- [ ] Scripts de despliegue (Docker, docker-compose)
+- [ ] Documentación de configuración
+
+### P2 - Media Prioridad
+- [ ] Notificaciones por email
+- [ ] Exportar notas a Excel
+- [ ] Recuperación de contraseña
+
+### P3 - Baja Prioridad
+- [ ] Dashboard analítico para admin
+- [ ] Modo oscuro
+- [ ] App móvil
