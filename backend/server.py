@@ -566,7 +566,7 @@ async def update_class_video(video_id: str, req: ClassVideoUpdate, user=Depends(
 # --- File Upload Route ---
 @api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(get_current_user)):
-    if user["role"] not in ["profesor", "admin"]:
+    if user["role"] not in ["profesor", "admin", "estudiante"]:
         raise HTTPException(status_code=403, detail="No autorizado")
     
     file_id = str(uuid.uuid4())
