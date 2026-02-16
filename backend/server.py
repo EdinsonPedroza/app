@@ -34,6 +34,66 @@ api_router = APIRouter(prefix="/api")
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# --- Startup Event - Crear datos iniciales ---
+@app.on_event("startup")
+async def startup_event():
+    await create_initial_data()
+
+async def create_initial_data():
+    """Crea los usuarios y datos iniciales si no existen"""
+    # Verificar si ya existe el admin
+    admin = await db.users.find_one({"email": "admin@educando.com"})
+    if admin:
+        return  # Ya existen datos
+    
+    print("Creando datos iniciales...")
+    
+    # Crear programas
+    programs = [
+        {"id": "prog-admin", "name": "Técnico en Asistencia Administrativa", "description": "Formación técnica en gestión administrativa", "duration": "12 meses", "modules": [], "active": True},
+        {"id": "prog-infancia", "name": "Técnico en Atención a la Primera Infancia", "description": "Formación en desarrollo infantil", "duration": "12 meses", "modules": [], "active": True},
+        {"id": "prog-sst", "name": "Técnico en Seguridad y Salud en el Trabajo", "description": "Formación en prevención de riesgos", "duration": "12 meses", "modules": [], "active": True},
+    ]
+    for p in programs:
+        await db.programs.update_one({"id": p["id"]}, {"$set": p}, upsert=True)
+    
+    # Crear usuarios
+    users = [
+        {"id": "user-admin", "name": "Administrador General", "email": "admin@educando.com", "cedula": None, "password_hash": hash_password("admin123"), "role": "admin", "program_id": None, "phone": "3001234567", "active": True},
+        {"id": "user-prof-1", "name": "María García López", "email": "profesor@educando.com", "cedula": None, "password_hash": hash_password("profesor123"), "role": "profesor", "program_id": None, "phone": "3009876543", "active": True},
+        {"id": "user-est-1", "name": "Juan Martínez Ruiz", "email": None, "cedula": "1234567890", "password_hash": hash_password("estudiante123"), "role": "estudiante", "program_id": "prog-admin", "phone": "3101234567", "active": True},
+        {"id": "user-est-2", "name": "Ana Sofía Hernández", "email": None, "cedula": "0987654321", "password_hash": hash_password("estudiante123"), "role": "estudiante", "program_id": "prog-admin", "phone": "3207654321", "active": True},
+    ]
+    for u in users:
+        await db.users.update_one({"id": u["id"]}, {"$set": u}, upsert=True)
+    
+    # Crear materias
+    subjects = [
+        {"id": "subj-1", "name": "Fundamentos de Administración", "program_id": "prog-admin", "module_number": 1, "description": "Bases de la gestión administrativa", "active": True},
+        {"id": "subj-2", "name": "Herramientas Ofimáticas", "program_id": "prog-admin", "module_number": 1, "description": "Excel, Word, PowerPoint", "active": True},
+    ]
+    for s in subjects:
+        await db.subjects.update_one({"id": s["id"]}, {"$set": s}, upsert=True)
+    
+    # Crear curso
+    course = {"id": "course-1", "name": "Fundamentos de Administración - Grupo A 2025", "program_id": "prog-admin", "subject_id": "subj-1", "teacher_id": "user-prof-1", "year": 2025, "student_ids": ["user-est-1", "user-est-2"], "active": True}
+    await db.courses.update_one({"id": course["id"]}, {"$set": course}, upsert=True)
+    
+    # Crear actividades
+    now = datetime.now(timezone.utc)
+    activities = [
+        {"id": "act-1", "course_id": "course-1", "title": "Ensayo sobre principios administrativos", "description": "Elaborar un ensayo de 2 páginas sobre los principios fundamentales de la administración", "activity_number": 1, "start_date": now.isoformat(), "due_date": (now + timedelta(days=14)).isoformat(), "files": [], "active": True},
+        {"id": "act-2", "course_id": "course-1", "title": "Taller de organización empresarial", "description": "Realizar el taller práctico sobre estructura organizacional", "activity_number": 2, "start_date": now.isoformat(), "due_date": (now + timedelta(days=7)).isoformat(), "files": [], "active": True},
+    ]
+    for a in activities:
+        await db.activities.update_one({"id": a["id"]}, {"$set": a}, upsert=True)
+    
+    print("Datos iniciales creados exitosamente")
+    print("Credenciales:")
+    print("  Admin: admin@educando.com / admin123")
+    print("  Profesor: profesor@educando.com / profesor123")
+    print("  Estudiante: 1234567890 / estudiante123")
+
 # --- Utility Functions ---
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
