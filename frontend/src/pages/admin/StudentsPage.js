@@ -280,7 +280,6 @@ export default function StudentsPage() {
                 placeholder="Número de cédula (solo dígitos)"
                 disabled={!!editing}
                 maxLength={12}
-                pattern="\d*"
                 inputMode="numeric"
                 required={!editing}
               />

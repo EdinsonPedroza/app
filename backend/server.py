@@ -24,6 +24,7 @@ load_dotenv(ROOT_DIR / '.env')
 # Rate limiting configuration
 # NOTE: This is an in-memory implementation suitable for development and single-instance deployments.
 # For production multi-instance deployments, consider using Redis or a distributed cache.
+# WARNING: This implementation is not thread-safe. For production, use threading.Lock or Redis.
 rate_limit_store = defaultdict(list)
 RATE_LIMIT_WINDOW = 60  # seconds
 MAX_LOGIN_ATTEMPTS = 5  # per window
@@ -53,8 +54,8 @@ def sanitize_string(value: str, max_length: int = 200, allow_email: bool = False
         # For email-like inputs, allow @ and .
         sanitized = re.sub(r'[^\w\s\-.,@áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
     else:
-        # For names and general text, exclude @
-        sanitized = re.sub(r'[^\w\s\-.,áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
+        # For names and general text, exclude @ and .
+        sanitized = re.sub(r'[^\w\s\-,áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
     return sanitized.strip()
 
 # MongoDB connection
@@ -1189,9 +1190,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    # Note: CSP with unsafe-inline/unsafe-eval is needed for React development builds
-    # For production, consider using a build-time CSP with nonces or hashes
-    response.headers["Content-Security-Policy"] = "default-src 'self';"
+    # Note: CSP is disabled for React development builds which require inline scripts/styles
+    # For production, implement a proper CSP with nonces or configure based on build requirements
+    # response.headers["Content-Security-Policy"] = "default-src 'self';"
     return response
 
 app.add_middleware(
