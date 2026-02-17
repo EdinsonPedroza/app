@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, validator, constr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -14,9 +14,49 @@ import jwt
 import hashlib
 import json
 import shutil
+import re
+from collections import defaultdict
+import time
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Rate limiting configuration
+# NOTE: This is an in-memory implementation suitable for development and single-instance deployments.
+# For production multi-instance deployments, consider using Redis or a distributed cache.
+# WARNING: This implementation is not thread-safe. For production, use threading.Lock or Redis.
+rate_limit_store = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # seconds
+MAX_LOGIN_ATTEMPTS = 5  # per window
+MAX_API_REQUESTS = 100  # per window for general API calls
+
+def check_rate_limit(identifier: str, max_attempts: int, window: int = RATE_LIMIT_WINDOW) -> bool:
+    """Check if rate limit is exceeded for a given identifier"""
+    current_time = time.time()
+    attempts = rate_limit_store[identifier]
+    
+    # Remove old attempts outside the time window
+    attempts[:] = [t for t in attempts if current_time - t < window]
+    
+    if len(attempts) >= max_attempts:
+        return False
+    
+    attempts.append(current_time)
+    return True
+
+def sanitize_string(value: str, max_length: int = 200, allow_email: bool = False) -> str:
+    """Sanitize string input to prevent injection attacks"""
+    if not value:
+        return value
+    # Remove any potentially dangerous characters
+    # Allow letters, numbers, spaces, and common punctuation
+    if allow_email:
+        # For email-like inputs, allow @ and .
+        sanitized = re.sub(r'[^\w\s\-.,@áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
+    else:
+        # For names and general text, exclude @ and .
+        sanitized = re.sub(r'[^\w\s\-,áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
+    return sanitized.strip()
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -27,7 +67,14 @@ db = client[os.environ.get('DB_NAME', 'educando_db')]
 JWT_SECRET = os.environ.get('JWT_SECRET', 'educando_secret_key_2025')
 JWT_ALGORITHM = "HS256"
 
-app = FastAPI()
+# Security configuration
+MAX_REQUEST_SIZE = 10 * 1024 * 1024  # 10MB max request size
+
+app = FastAPI(
+    title="Corporación Social Educando API",
+    description="API para gestión de escuela técnica virtual",
+    version="1.0.0"
+)
 api_router = APIRouter(prefix="/api")
 
 # File upload directory
@@ -126,27 +173,86 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 
 # --- Pydantic Models ---
 class LoginRequest(BaseModel):
-    email: Optional[str] = None
-    cedula: Optional[str] = None
-    password: str
-    role: str
+    email: Optional[constr(max_length=100)] = None
+    cedula: Optional[constr(max_length=20)] = None
+    password: constr(min_length=1, max_length=100)
+    role: constr(pattern=r'^(admin|profesor|estudiante)$')
+    
+    @validator('email')
+    def validate_email(cls, v):
+        if v:
+            # More robust email validation
+            pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
+                raise ValueError('Formato de email inválido')
+        return v.lower() if v else v
+    
+    @validator('cedula')
+    def validate_cedula(cls, v):
+        if v and not re.match(r'^\d{6,12}$', v):
+            raise ValueError('Cédula debe tener entre 6 y 12 dígitos')
+        return v
 
 class UserCreate(BaseModel):
-    name: str
-    email: Optional[str] = None
-    cedula: Optional[str] = None
-    password: str
-    role: str
+    name: constr(min_length=3, max_length=100)
+    email: Optional[constr(max_length=100)] = None
+    cedula: Optional[constr(max_length=20)] = None
+    password: constr(min_length=6, max_length=100)
+    role: constr(pattern=r'^(admin|profesor|estudiante)$')
     program_id: Optional[str] = None
-    phone: Optional[str] = None
+    phone: Optional[constr(max_length=20)] = None
+    
+    @validator('name')
+    def validate_name(cls, v):
+        return sanitize_string(v, 100, allow_email=False)
+    
+    @validator('email')
+    def validate_email(cls, v):
+        if v:
+            # More robust email validation
+            pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
+                raise ValueError('Formato de email inválido')
+        return v.lower() if v else v
+    
+    @validator('cedula')
+    def validate_cedula(cls, v):
+        if v and not re.match(r'^\d{6,12}$', v):
+            raise ValueError('Cédula debe tener entre 6 y 12 dígitos')
+        return v
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v and not re.match(r'^[\d\s\-+()]{7,20}$', v):
+            raise ValueError('Formato de teléfono inválido')
+        return v
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[str] = None
-    cedula: Optional[str] = None
-    phone: Optional[str] = None
+    name: Optional[constr(min_length=3, max_length=100)] = None
+    email: Optional[constr(max_length=100)] = None
+    cedula: Optional[constr(max_length=20)] = None
+    phone: Optional[constr(max_length=20)] = None
     program_id: Optional[str] = None
     active: Optional[bool] = None
+    
+    @validator('name')
+    def validate_name(cls, v):
+        return sanitize_string(v, 100, allow_email=False) if v else v
+    
+    @validator('email')
+    def validate_email(cls, v):
+        if v:
+            # More robust email validation
+            pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
+                raise ValueError('Formato de email inválido')
+        return v.lower() if v else v
+    
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v and not re.match(r'^[\d\s\-+()]{7,20}$', v):
+            raise ValueError('Formato de teléfono inválido')
+        return v
 
 class ProgramCreate(BaseModel):
     name: str
@@ -228,7 +334,18 @@ class SubmissionCreate(BaseModel):
 
 # --- Auth Routes ---
 @api_router.post("/auth/login")
-async def login(req: LoginRequest):
+async def login(req: LoginRequest, request: Request):
+    # Rate limiting based on IP address or identifier
+    identifier = req.email or req.cedula or "unknown"
+    client_ip = request.client.host if request.client else "unknown"
+    rate_limit_key = f"login:{client_ip}:{identifier}"
+    
+    if not check_rate_limit(rate_limit_key, MAX_LOGIN_ATTEMPTS):
+        raise HTTPException(
+            status_code=429, 
+            detail="Demasiados intentos de inicio de sesión. Por favor, intenta más tarde."
+        )
+    
     query = {}
     if req.role == "estudiante":
         if not req.cedula:
@@ -274,6 +391,13 @@ async def create_user(req: UserCreate, user=Depends(get_current_user)):
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Solo admin puede crear usuarios")
     
+    # Additional validation
+    if req.role == "estudiante" and not req.cedula:
+        raise HTTPException(status_code=400, detail="Cédula requerida para estudiantes")
+    
+    if req.role in ["admin", "profesor"] and not req.email:
+        raise HTTPException(status_code=400, detail="Email requerido para admin/profesor")
+    
     if req.role in ["admin", "profesor"] and req.email:
         existing = await db.users.find_one({"email": req.email})
         if existing:
@@ -283,6 +407,12 @@ async def create_user(req: UserCreate, user=Depends(get_current_user)):
         existing = await db.users.find_one({"cedula": req.cedula})
         if existing:
             raise HTTPException(status_code=400, detail="Cédula ya existe")
+    
+    # Verify program exists if provided
+    if req.program_id:
+        program = await db.programs.find_one({"id": req.program_id})
+        if not program:
+            raise HTTPException(status_code=400, detail="Programa no encontrado")
     
     new_user = {
         "id": str(uuid.uuid4()),
@@ -1050,6 +1180,20 @@ async def root():
     return {"message": "Corporación Social Educando API"}
 
 app.include_router(api_router)
+
+# Security middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Add security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Note: CSP is disabled for React development builds which require inline scripts/styles
+    # For production, implement a proper CSP with nonces or configure based on build requirements
+    # response.headers["Content-Security-Policy"] = "default-src 'self';"
+    return response
 
 app.add_middleware(
     CORSMiddleware,
