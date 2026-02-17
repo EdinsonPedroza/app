@@ -50,6 +50,18 @@ export default function StudentsPage() {
 
   // Get which courses a student is enrolled in
   const getStudentCourseIds = (studentId) => courses.filter(c => (c.student_ids || []).includes(studentId)).map(c => c.id);
+  
+  // Get courses filtered by selected program
+  const getFilteredCourses = () => {
+    if (!form.program_id) return courses;
+    return courses.filter(c => c.program_id === form.program_id);
+  };
+  
+  // Get program for a course
+  const getCourseProgram = (courseId) => {
+    const course = courses.find(c => c.id === courseId);
+    return course ? programs.find(p => p.id === course.program_id) : null;
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -80,17 +92,58 @@ export default function StudentsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || (!editing && !form.cedula.trim())) { toast.error('Nombre y cédula requeridos'); return; }
-    if (!editing && !form.password) { toast.error('Contraseña requerida'); return; }
+    // Validation
+    const trimmedName = form.name.trim();
+    const trimmedCedula = form.cedula.trim();
+    
+    if (!trimmedName || trimmedName.length < 3) {
+      toast.error('El nombre debe tener al menos 3 caracteres');
+      return;
+    }
+    
+    if (!editing && !trimmedCedula) {
+      toast.error('Cédula requerida');
+      return;
+    }
+    
+    if (!editing && trimmedCedula && !/^\d{6,12}$/.test(trimmedCedula)) {
+      toast.error('La cédula debe tener entre 6 y 12 dígitos');
+      return;
+    }
+    
+    if (!editing && !form.password) {
+      toast.error('Contraseña requerida');
+      return;
+    }
+    
+    if (!editing && form.password && form.password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    if (form.phone && !/^[\d\s\-+()]*$/.test(form.phone)) {
+      toast.error('Formato de teléfono inválido');
+      return;
+    }
+    
     setSaving(true);
     try {
       let studentId;
       if (editing) {
-        await api.put(`/users/${editing.id}`, { name: form.name, phone: form.phone, program_id: form.program_id || null });
+        await api.put(`/users/${editing.id}`, { 
+          name: trimmedName, 
+          phone: form.phone, 
+          program_id: form.program_id || null 
+        });
         studentId = editing.id;
         toast.success('Estudiante actualizado');
       } else {
-        const res = await api.post('/users', { ...form, role: 'estudiante' });
+        const res = await api.post('/users', { 
+          ...form, 
+          name: trimmedName,
+          cedula: trimmedCedula,
+          role: 'estudiante' 
+        });
         studentId = res.data.id;
         toast.success('Estudiante creado');
       }
@@ -203,30 +256,109 @@ export default function StudentsPage() {
             <DialogDescription>Ingresa los datos del estudiante</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Nombre Completo</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre del estudiante" /></div>
-            <div className="space-y-2"><Label>Cédula</Label><Input value={form.cedula} onChange={(e) => setForm({ ...form, cedula: e.target.value })} placeholder="Número de cédula" disabled={!!editing} /></div>
-            {!editing && <div className="space-y-2"><Label>Contraseña</Label><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Contraseña inicial" /></div>}
             <div className="space-y-2">
-              <Label>Programa</Label>
+              <Label>Nombre Completo *</Label>
+              <Input 
+                value={form.name} 
+                onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                placeholder="Nombre completo del estudiante"
+                maxLength={100}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Cédula *</Label>
+              <Input 
+                value={form.cedula} 
+                onChange={(e) => setForm({ ...form, cedula: e.target.value.replace(/\D/g, '') })} 
+                placeholder="Número de cédula (solo dígitos)"
+                disabled={!!editing}
+                maxLength={12}
+                pattern="\d*"
+                inputMode="numeric"
+                required={!editing}
+              />
+            </div>
+            {!editing && (
+              <div className="space-y-2">
+                <Label>Contraseña *</Label>
+                <Input 
+                  type="password" 
+                  value={form.password} 
+                  onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                  placeholder="Contraseña inicial (mínimo 6 caracteres)"
+                  minLength={6}
+                  maxLength={50}
+                  required
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Programa Técnico</Label>
               <Select value={form.program_id} onValueChange={(v) => setForm({ ...form, program_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar programa" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Seleccionar programa técnico" /></SelectTrigger>
                 <SelectContent>
-                  {programs.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  {programs.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{p.name}</span>
+                        {p.description && <span className="text-xs text-muted-foreground">{p.description}</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {form.program_id && (
+                <p className="text-xs text-muted-foreground">
+                  Se mostrarán solo los cursos de este programa
+                </p>
+              )}
             </div>
-            <div className="space-y-2"><Label>Teléfono</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="300 123 4567" /></div>
             <div className="space-y-2">
-              <Label>Cursos Inscritos</Label>
-              <div className="max-h-36 overflow-y-auto rounded-lg border p-3 space-y-2">
-                {courses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No hay cursos creados</p>
-                ) : courses.map((c) => (
-                  <div key={c.id} className="flex items-center gap-2">
-                    <Checkbox checked={form.course_ids.includes(c.id)} onCheckedChange={() => toggleCourse(c.id)} />
-                    <span className="text-sm">{c.name}</span>
-                  </div>
-                ))}
+              <Label>Teléfono</Label>
+              <Input 
+                value={form.phone} 
+                onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+                placeholder="Ej: 300 123 4567"
+                maxLength={20}
+                type="tel"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Grupos Inscritos</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Selecciona los grupos (cursos) en los que se inscribirá el estudiante
+              </p>
+              <div className="max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2">
+                {getFilteredCourses().length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {form.program_id ? 'No hay cursos disponibles para este programa' : 'Selecciona un programa para ver los cursos'}
+                  </p>
+                ) : getFilteredCourses().map((c) => {
+                  const courseProgram = getCourseProgram(c.id);
+                  return (
+                    <div key={c.id} className="flex items-start gap-2 p-2 rounded hover:bg-muted/50 transition-colors">
+                      <Checkbox 
+                        checked={form.course_ids.includes(c.id)} 
+                        onCheckedChange={() => toggleCourse(c.id)}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium">{c.name}</span>
+                          {courseProgram && (
+                            <Badge variant="secondary" className="text-xs">
+                              {courseProgram.name}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {c.year} • {(c.student_ids || []).length} estudiantes
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
