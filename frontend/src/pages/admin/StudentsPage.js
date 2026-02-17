@@ -270,7 +270,13 @@ export default function StudentsPage() {
               <Label>Cédula *</Label>
               <Input 
                 value={form.cedula} 
-                onChange={(e) => setForm({ ...form, cedula: e.target.value.replace(/\D/g, '') })} 
+                onChange={(e) => setForm({ ...form, cedula: e.target.value.replace(/\D/g, '') })}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const pastedText = e.clipboardData.getData('text');
+                  const numericOnly = pastedText.replace(/\D/g, '');
+                  setForm({ ...form, cedula: numericOnly });
+                }}
                 placeholder="Número de cédula (solo dígitos)"
                 disabled={!!editing}
                 maxLength={12}
@@ -278,6 +284,7 @@ export default function StudentsPage() {
                 inputMode="numeric"
                 required={!editing}
               />
+            </div>
             </div>
             {!editing && (
               <div className="space-y-2">

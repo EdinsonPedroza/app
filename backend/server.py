@@ -22,6 +22,8 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # Rate limiting configuration
+# NOTE: This is an in-memory implementation suitable for development and single-instance deployments.
+# For production multi-instance deployments, consider using Redis or a distributed cache.
 rate_limit_store = defaultdict(list)
 RATE_LIMIT_WINDOW = 60  # seconds
 MAX_LOGIN_ATTEMPTS = 5  # per window
@@ -41,13 +43,18 @@ def check_rate_limit(identifier: str, max_attempts: int, window: int = RATE_LIMI
     attempts.append(current_time)
     return True
 
-def sanitize_string(value: str, max_length: int = 200) -> str:
+def sanitize_string(value: str, max_length: int = 200, allow_email: bool = False) -> str:
     """Sanitize string input to prevent injection attacks"""
     if not value:
         return value
     # Remove any potentially dangerous characters
     # Allow letters, numbers, spaces, and common punctuation
-    sanitized = re.sub(r'[^\w\s\-.,@áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
+    if allow_email:
+        # For email-like inputs, allow @ and .
+        sanitized = re.sub(r'[^\w\s\-.,@áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
+    else:
+        # For names and general text, exclude @
+        sanitized = re.sub(r'[^\w\s\-.,áéíóúñÁÉÍÓÚÑüÜ]', '', value[:max_length])
     return sanitized.strip()
 
 # MongoDB connection
@@ -172,8 +179,11 @@ class LoginRequest(BaseModel):
     
     @validator('email')
     def validate_email(cls, v):
-        if v and not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', v):
-            raise ValueError('Formato de email inválido')
+        if v:
+            # More robust email validation
+            pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
+                raise ValueError('Formato de email inválido')
         return v.lower() if v else v
     
     @validator('cedula')
@@ -193,12 +203,15 @@ class UserCreate(BaseModel):
     
     @validator('name')
     def validate_name(cls, v):
-        return sanitize_string(v, 100)
+        return sanitize_string(v, 100, allow_email=False)
     
     @validator('email')
     def validate_email(cls, v):
-        if v and not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', v):
-            raise ValueError('Formato de email inválido')
+        if v:
+            # More robust email validation
+            pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
+                raise ValueError('Formato de email inválido')
         return v.lower() if v else v
     
     @validator('cedula')
@@ -223,12 +236,15 @@ class UserUpdate(BaseModel):
     
     @validator('name')
     def validate_name(cls, v):
-        return sanitize_string(v, 100) if v else v
+        return sanitize_string(v, 100, allow_email=False) if v else v
     
     @validator('email')
     def validate_email(cls, v):
-        if v and not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', v):
-            raise ValueError('Formato de email inválido')
+        if v:
+            # More robust email validation
+            pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
+                raise ValueError('Formato de email inválido')
         return v.lower() if v else v
     
     @validator('phone')
@@ -1173,7 +1189,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+    # Note: CSP with unsafe-inline/unsafe-eval is needed for React development builds
+    # For production, consider using a build-time CSP with nonces or hashes
+    response.headers["Content-Security-Policy"] = "default-src 'self';"
     return response
 
 app.add_middleware(
